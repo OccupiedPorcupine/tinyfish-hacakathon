@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-900: #134e4a;
+  
+  --color-dark-900: #0a0a0a;
+  --color-dark-800: #121212;
+  --color-dark-700: #1a1a1a;
+  --color-dark-600: #262626;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-900 text-gray-50 font-sans antialiased text-sm sm:text-base selection:bg-brand-500 selection:text-white;
+  }
+}
+
+.glass-panel {
+  @apply bg-dark-800/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+}
+
+.gradient-text {
+  @apply text-transparent bg-clip-text bg-gradient-to-r from-brand-100 to-brand-500;
+}
+
+.accent-glow {
+  @apply absolute rounded-full blur-[100px] bg-brand-500/20 pointer-events-none;
+}
