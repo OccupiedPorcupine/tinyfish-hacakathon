@@ -25,7 +25,6 @@ export function Navbar() {
 
   const navLinks = [
     { name: 'Dashboard', href: '/' },
-    { name: 'Run Scan', href: '/scan' },
     { name: 'Markets', href: '/markets' },
     { name: 'Founder Fit', href: '/founder-fit' },
     { name: 'Funding Feed', href: '/feed' },

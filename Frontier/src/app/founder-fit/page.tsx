@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 
 // Enhanced founder profile with operational details
@@ -157,19 +157,72 @@ const FIT_OPPORTUNITIES = [
   },
 ];
 
+function mergeApiOpportunities(existing: typeof FIT_OPPORTUNITIES, apiOpps: any[]): typeof FIT_OPPORTUNITIES {
+  return existing.map(op => {
+    const match = apiOpps.find(
+      a => a.category?.toLowerCase() === op.category?.toLowerCase()
+    );
+    if (!match) return op;
+    return {
+      ...op,
+      founderFitScore: match.founderFitScore ?? op.founderFitScore,
+      fitConfidence: match.fitConfidence ?? op.fitConfidence,
+      whyFits: match.whyFits ?? op.whyFits,
+      whatMayHoldYouBack: match.whatMayHoldYouBack ?? op.whatMayHoldYouBack,
+      firstMove: match.firstMove ?? op.firstMove,
+      reasons: match.reasons ?? op.reasons,
+      risks: match.risks ?? op.risks,
+    };
+  });
+}
+
 export default function FounderFitPage() {
   const [selectedId, setSelectedId] = useState<string>('1');
   const [showScoringFormula, setShowScoringFormula] = useState(false);
-  
-  const selectedOp = FIT_OPPORTUNITIES.find(op => op.id === selectedId) || FIT_OPPORTUNITIES[0];
+  const [fitOpportunities, setFitOpportunities] = useState(FIT_OPPORTUNITIES);
+  const [fitFetching, setFitFetching] = useState(true);
+  const [fitLive, setFitLive] = useState(false);
+
+  useEffect(() => {
+    const cached = sessionStorage.getItem('geogap-founder-fit');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.opportunities?.length > 0) {
+          setFitOpportunities(prev => mergeApiOpportunities(prev, parsed.opportunities));
+          setFitLive(true);
+          setFitFetching(false);
+          return;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    fetch('/api/founder-fit')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.opportunities?.length > 0) {
+          sessionStorage.setItem('geogap-founder-fit', JSON.stringify(data));
+          setFitOpportunities(prev => mergeApiOpportunities(prev, data.opportunities));
+          setFitLive(true);
+        }
+      })
+      .catch(() => {
+        // silently fall back to hardcoded data
+      })
+      .finally(() => setFitFetching(false));
+  }, []);
+
+  const selectedOp = fitOpportunities.find(op => op.id === selectedId) || fitOpportunities[0];
 
   // Calculate scores using 55/45 formula
   const allOpportunitiesWithScores = useMemo(() => {
-    return FIT_OPPORTUNITIES.map(op => {
+    return fitOpportunities.map(op => {
       const bestBetScore = Math.round(op.marketScore * 0.55 + op.founderFitScore * 0.45);
       return { ...op, bestBetScore };
     });
-  }, []);
+  }, [fitOpportunities]);
 
   // Sorted by Best Bet Score descending
   const rankedOpportunities = useMemo(() => {
@@ -230,7 +283,14 @@ export default function FounderFitPage() {
         {/* HERO SECTION */}
         <section className="space-y-6">
           <div>
-            <h1 className="text-5xl font-display font-bold text-white tracking-tight mb-4">Founder Fit</h1>
+            <div className="flex items-center gap-3 mb-4">
+              <h1 className="text-5xl font-display font-bold text-white tracking-tight">Founder Fit</h1>
+              {fitLive && (
+                <span className="px-2 py-1 text-xs font-bold bg-brand-500/20 text-brand-400 border border-brand-500/30 rounded-full uppercase tracking-wider">
+                  Live
+                </span>
+              )}
+            </div>
             <p className="text-xl text-gray-400 max-w-2xl leading-relaxed">
               Match your operating background, access advantages, and execution strengths to the market gaps most worth building.
             </p>

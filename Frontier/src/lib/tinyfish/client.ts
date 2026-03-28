@@ -1,4 +1,4 @@
-import { GapRadarRequest, ScanResult } from './types';
+import { GapRadarRequest, ScanResult, ValidationKit, ValidationKitRequest } from './types';
 import { runTinyFishTask } from './sse-client';
 import { structureData } from '@/lib/openai/client';
 
@@ -54,6 +54,78 @@ Be specific per market. Use real company names and data where possible.`;
 "signalTimeline": array of 3-4 objects, each with:
   "date": quarter string like "2025 Q3" or "2026 Q1"
   "event": description of a key market event or milestone`
+  );
+
+  return result;
+}
+
+export async function generateValidationKitForOpportunity(request: ValidationKitRequest): Promise<ValidationKit> {
+  const id = crypto.randomUUID();
+
+  const goal = `Search Reddit, LinkedIn, Facebook Groups, and community forums for discussions about "${request.painArea}" by ${request.targetAudience} in ${request.market}.
+
+Find:
+1. Real complaints and pain points people describe about this problem
+2. Current tools or workarounds people are using
+3. Signals of willingness to pay (pricing discussions, quotes about costs)
+4. Workflow descriptions showing how people handle this problem today
+5. Specific communities (subreddits, Facebook groups, LinkedIn groups) where this audience hangs out
+
+Also identify 3-4 communities where ${request.targetAudience} in ${request.market} would be active.
+
+Be specific — include real quotes, subreddit names, group names, and estimated member counts where possible.`;
+
+  const raw = await runTinyFishTask('https://reddit.com', goal);
+
+  const result = await structureData<ValidationKit>(
+    raw,
+    `Return a JSON object matching this exact structure for a validation kit about "${request.category}" in ${request.market}:
+
+{
+  "id": "${id}",
+  "opportunityId": "${request.scanResultId ?? id}",
+  "category": "${request.category}",
+  "market": "${request.market}",
+  "createdAt": "${new Date().toISOString()}",
+  "painSignalStrength": <integer 0-100>,
+  "willingSample": <integer count of wtp signals found>,
+  "productivityGap": <integer 0-100 estimated efficiency gap>,
+  "validationQuestions": [
+    {
+      "id": "q1",
+      "question": "<targeted interview question>",
+      "focusArea": "<one of: pain_quantification | workflow | wtp | switching_cost>",
+      "context": "<why this question matters>",
+      "expectedSignals": ["<signal 1>", "<signal 2>"]
+    }
+    // 6-8 questions total
+  ],
+  "communities": [
+    {
+      "id": "c1",
+      "platform": "<one of: reddit | facebook | linkedin | slack | discord>",
+      "name": "<community name>",
+      "url": "<url>",
+      "memberCount": <integer>,
+      "relevance": "<primary or secondary>",
+      "difficulty": "<easy | medium | hard>",
+      "description": "<1 sentence description>"
+    }
+    // 4-6 communities total (mix of primary and secondary)
+  ],
+  "preValidatedSignals": [
+    {
+      "id": "s1",
+      "signal": "<real quote or paraphrase from community>",
+      "source": "<e.g. r/indonesia_entrepreneurs · comment>",
+      "category": "<one of: workflow_description | pain_complaint | tool_mention | wtp_indicator>",
+      "relevance": <integer 0-100>,
+      "context": "<brief explanation of relevance>"
+    }
+    // 6-10 signals total across all four categories
+  ],
+  "markdownScript": "# Validation Interview Script\\n\\n## ${request.category} in ${request.market}\\n\\n<formatted markdown with all questions as an interview script>",
+  "jsonData": {}}`
   );
 
   return result;
