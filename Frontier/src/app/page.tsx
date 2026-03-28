@@ -1,11 +1,21 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Realistic sample data matching the prompt - with intentional quadrant distribution
-const OPPORTUNITIES = [
+// Types for live dashboard data
+type DashboardOp = {
+  id: string; category: string; market: string; sector: string;
+  x: number; y: number; score: number; confidence: number;
+  demand: number; trend: string; analogs: string[]; whyNow: string;
+};
+type RisingCategory = { category: string; market: string; trend: string; declining: boolean; };
+type MigrationSignal = { category: string; path: string[]; confidence: string; window: string; };
+type FundingSignal = { company: string; round: string; market: string; sector: string; };
+
+// Fallback data shown immediately (no blank states)
+const FALLBACK_OPPORTUNITIES: DashboardOp[] = [
   {
     id: '1', category: 'AI Sales Agents', market: 'Indonesia', sector: 'SaaS',
     x: 34, y: 84, score: 92, confidence: 84, demand: 78,
@@ -58,6 +68,25 @@ const OPPORTUNITIES = [
   }
 ];
 
+const FALLBACK_RISING: RisingCategory[] = [
+  { category: 'Embedded Finance', market: 'Vietnam', trend: '+18.2%', declining: false },
+  { category: 'B2B E-commerce', market: 'Indonesia', trend: '+12.4%', declining: false },
+  { category: 'HealthTech', market: 'Vietnam', trend: '+8.9%', declining: false },
+  { category: 'EdTech', market: 'Indonesia', trend: '-12.6%', declining: true },
+];
+
+const FALLBACK_MIGRATION: MigrationSignal[] = [
+  { category: 'AI SDR Tools', path: ['US', 'IN', 'ID'], confidence: 'High confidence', window: '3-6mo window' },
+  { category: 'SME Embedded Finance', path: ['BR', 'VN'], confidence: 'Moderate confidence', window: 'inflecting now' },
+  { category: 'Vertical Clinic SaaS', path: ['IN', 'PH'], confidence: 'High confidence', window: 'lagging 18mo behind' },
+];
+
+const FALLBACK_FUNDING: FundingSignal[] = [
+  { company: 'DataForge', round: '$12M Series A', market: 'SG', sector: 'Data Infrastructure' },
+  { company: 'KrediCepat', round: '$5M Seed', market: 'ID', sector: 'Consumer Lending' },
+  { company: 'MediSync', round: '$8M Pre-Series A', market: 'VN', sector: 'HealthTech' },
+];
+
 export default function DashboardTerminal() {
   const router = useRouter();
 
@@ -68,23 +97,60 @@ export default function DashboardTerminal() {
   const [scanPriority, setScanPriority] = useState('Whitespace');
   const [isScanning, setIsScanning] = useState(false);
 
+  // Live dashboard data (fallback shown immediately)
+  const [opportunities, setOpportunities] = useState<DashboardOp[]>(FALLBACK_OPPORTUNITIES);
+  const [risingCategories, setRisingCategories] = useState<RisingCategory[]>(FALLBACK_RISING);
+  const [migrationSignals, setMigrationSignals] = useState<MigrationSignal[]>(FALLBACK_MIGRATION);
+  const [fundingSignals, setFundingSignals] = useState<FundingSignal[]>(FALLBACK_FUNDING);
+  const [dashLive, setDashLive] = useState(false);
+  const [dashFetching, setDashFetching] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/dashboard')
+      .then(r => r.json())
+      .then(data => {
+        if (data.opportunities?.length) {
+          setOpportunities(data.opportunities.map((op: any, i: number) => ({
+            id: op.id || String(i + 1),
+            category: op.category,
+            market: op.market,
+            sector: op.analogs?.[0] || 'Tech',
+            x: op.competitionDensity ?? 50,
+            y: op.momentum ?? 50,
+            score: op.score,
+            confidence: op.confidence,
+            demand: op.demand,
+            trend: op.trend,
+            analogs: op.analogs || [],
+            whyNow: op.whyNow,
+          })));
+          setDashLive(true);
+        }
+        if (data.risingCategories?.length) setRisingCategories(data.risingCategories);
+        if (data.migrationSignals?.length) setMigrationSignals(data.migrationSignals);
+        if (data.fundingSignals?.length) setFundingSignals(data.fundingSignals);
+      })
+      .catch(() => {/* silently use fallback */})
+      .finally(() => setDashFetching(false));
+  }, []);
+
   // Matrix State
   const [timeFilter, setTimeFilter] = useState('7D');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [viewBy, setViewBy] = useState<'Category' | 'Market'>('Category');
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>('1'); // Default selection
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filteredData = useMemo(() => {
-    return OPPORTUNITIES.filter(op => categoryFilter === 'All' || op.category.includes(categoryFilter) || (categoryFilter === 'Fintech' && (op.category.includes('Finance') || op.category.includes('Lending'))) || (categoryFilter === 'SaaS' && op.category.includes('SaaS')));
-  }, [categoryFilter]);
+    return opportunities.filter(op => categoryFilter === 'All' || op.category.includes(categoryFilter) || (categoryFilter === 'Fintech' && (op.category.includes('Finance') || op.category.includes('Lending'))) || (categoryFilter === 'SaaS' && op.category.includes('SaaS')));
+  }, [categoryFilter, opportunities]);
 
-  const selectedOp = OPPORTUNITIES.find(op => op.id === selectedId) || OPPORTUNITIES[0];
+  const selectedOp = opportunities.find(op => op.id === selectedId) || opportunities[0];
 
   // Get top 4 opportunities ranked by score for the shortlist
   const topOpportunities = useMemo(() => {
-    return [...OPPORTUNITIES].sort((a, b) => b.score - a.score).slice(0, 4);
-  }, []);
+    return [...opportunities].sort((a, b) => b.score - a.score).slice(0, 4);
+  }, [opportunities]);
 
   const getCompetitionColor = (x: number) => {
     if (x < 30) return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
@@ -246,7 +312,18 @@ export default function DashboardTerminal() {
         <section className="bg-[#111113] border border-white/10 rounded-2xl p-8 relative overflow-hidden">
           <header className="mb-6 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
             <div>
-              <h2 className="text-2xl font-display font-semibold text-white tracking-tight">Market Opportunity Matrix</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-display font-semibold text-white tracking-tight">Market Opportunity Matrix</h2>
+                {dashFetching ? (
+                  <span className="flex items-center gap-1.5 text-xs font-mono text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />fetching live data
+                  </span>
+                ) : dashLive ? (
+                  <span className="flex items-center gap-1.5 text-xs font-mono text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />live
+                  </span>
+                ) : null}
+              </div>
               <p className="text-gray-400 mt-1.5 text-sm max-w-xl">
                 Compare markets by momentum and competitive intensity to spot high-potential entry windows.
               </p>
@@ -452,96 +529,63 @@ export default function DashboardTerminal() {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Fastest-Rising Categories</h3>
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono flex items-center gap-2">
+              Fastest-Rising Categories
+              {dashFetching ? <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" /> : dashLive ? <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> : null}
+            </h3>
             <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center group">
-                <div>
-                  <div className="text-sm font-medium text-white">Embedded Finance</div>
-                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">VIETNAM</div>
+              {risingCategories.map((cat, i) => (
+                <div key={i} className="flex justify-between items-center group">
+                  <div>
+                    <div className={`text-sm font-medium ${cat.declining ? 'text-gray-400 line-through decoration-red-500/50' : 'text-white'}`}>{cat.category}</div>
+                    <div className="text-[10px] font-mono text-gray-500 tracking-wider">{cat.market.toUpperCase()}</div>
+                  </div>
+                  <div className={`text-sm font-mono font-bold ${cat.declining ? 'text-red-400' : 'text-green-400'} group-hover:scale-110 transition-transform`}>{cat.trend}</div>
                 </div>
-                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+18.2%</div>
-              </div>
-              <div className="flex justify-between items-center group">
-                <div>
-                  <div className="text-sm font-medium text-white">B2B E-commerce</div>
-                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">INDONESIA</div>
-                </div>
-                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+12.4%</div>
-              </div>
-              <div className="flex justify-between items-center group">
-                <div>
-                  <div className="text-sm font-medium text-white">HealthTech</div>
-                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">VIETNAM</div>
-                </div>
-                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+8.9%</div>
-              </div>
-              <div className="flex justify-between items-center group">
-                <div>
-                  <div className="text-sm font-medium text-gray-400 line-through decoration-red-500/50">EdTech</div>
-                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">INDONESIA</div>
-                </div>
-                <div className="text-sm font-mono font-bold text-red-400 group-hover:scale-110 transition-transform">-12.6%</div>
-              </div>
+              ))}
             </div>
           </div>
 
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Pattern Migration Signals</h3>
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono flex items-center gap-2">
+              Pattern Migration Signals
+              {dashFetching ? <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" /> : dashLive ? <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> : null}
+            </h3>
             <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-1.5">
-                <div className="text-sm font-medium text-white">AI SDR Tools</div>
-                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
-                  <span>US</span><span className="text-brand-500">→</span><span>IN</span><span className="text-brand-500">→</span><span className="text-white font-bold">ID</span>
+              {migrationSignals.map((sig, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="text-sm font-medium text-white">{sig.category}</div>
+                  <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
+                    {sig.path.map((market, j) => (
+                      <React.Fragment key={j}>
+                        <span className={j === sig.path.length - 1 ? 'text-white font-bold' : ''}>{market}</span>
+                        {j < sig.path.length - 1 && <span className="text-brand-500">→</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-gray-500 italic">{sig.confidence} — {sig.window}</div>
                 </div>
-                <div className="text-[10px] text-gray-500 italic">High confidence — 3-6mo window</div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="text-sm font-medium text-white">SME Embedded Finance</div>
-                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
-                  <span>BR</span><span className="text-brand-500">→</span><span className="text-white font-bold">VN</span>
-                </div>
-                <div className="text-[10px] text-gray-500 italic">Moderate confidence — inflecting now</div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="text-sm font-medium text-white">Vertical Clinic SaaS</div>
-                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
-                  <span>IN</span><span className="text-brand-500">→</span><span className="text-white font-bold">PH</span>
-                </div>
-                <div className="text-[10px] text-gray-500 italic">High confidence — lagging 18mo behind</div>
-              </div>
+              ))}
             </div>
           </div>
 
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
-            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Recent Funding Signals</h3>
+            <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono flex items-center gap-2">
+              Recent Funding Signals
+              {dashFetching ? <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" /> : dashLive ? <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> : null}
+            </h3>
             <div className="flex flex-col gap-5">
-              <div className="border-l-2 border-brand-500/50 pl-3">
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-sm font-bold text-white">DataForge</span>
-                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$12M Series A</span>
+              {fundingSignals.map((sig, i) => (
+                <div key={i} className="border-l-2 border-brand-500/50 pl-3">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-sm font-bold text-white">{sig.company}</span>
+                    <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">{sig.round}</span>
+                  </div>
+                  <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                    <span className="uppercase font-mono">{sig.market}</span> • <span>{sig.sector}</span>
+                  </div>
                 </div>
-                <div className="text-[11px] text-gray-400 flex items-center gap-2">
-                  <span className="uppercase font-mono">SG</span> • <span>Data Infrastructure</span>
-                </div>
-              </div>
-              <div className="border-l-2 border-brand-500/50 pl-3">
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-sm font-bold text-white">KrediCepat</span>
-                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$5M Seed</span>
-                </div>
-                <div className="text-[11px] text-gray-400 flex items-center gap-2">
-                  <span className="uppercase font-mono">ID</span> • <span>Consumer Lending</span>
-                </div>
-              </div>
-              <div className="border-l-2 border-brand-500/50 pl-3">
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-sm font-bold text-white">MediSync</span>
-                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$8M Pre-Series A</span>
-                </div>
-                <div className="text-[11px] text-gray-400 flex items-center gap-2">
-                  <span className="uppercase font-mono">VN</span> • <span>HealthTech</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
