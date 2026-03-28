@@ -1,10 +1,43 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // Type definitions
 type SignalType = 'opening-window' | 'pattern-transfer' | 'saturation-alert' | 'regulation' | 'funding-spike' | 'hiring-growth';
 type ConfidenceLevel = 'low' | 'medium' | 'medium-high' | 'high';
+
+interface ApiSignal {
+  id: number;
+  type: 'funding' | 'regulation' | 'hiring' | 'trend';
+  market: string;
+  text: string;
+  source: string;
+  date: string;
+}
+
+function apiSignalToCard(s: ApiSignal): SignalCard {
+  const typeMap: Record<string, SignalType> = {
+    funding: 'funding-spike',
+    regulation: 'regulation',
+    hiring: 'hiring-growth',
+    trend: 'opening-window',
+  };
+  return {
+    id: `live-${s.id}`,
+    category: s.text.length > 40 ? s.text.slice(0, 37) + '…' : s.text,
+    sourceMarket: 'Global',
+    targetMarket: s.market,
+    signalType: typeMap[s.type] ?? 'opening-window',
+    confidence: 'medium',
+    momentum: ((s.id * 7) % 20) + 5,
+    summary: s.text,
+    whyNow: s.text,
+    evidence: [s.type.charAt(0).toUpperCase() + s.type.slice(1)],
+    timestamp: s.date,
+    sourceValidation: [s.source],
+    targetReadiness: [],
+  };
+}
 
 interface SignalCard {
   id: string;
@@ -192,16 +225,31 @@ export default function SignalFeedPage() {
   const [timeWindow, setTimeWindow] = useState<'24h' | '7d' | '30d'>('7d');
   const [savedWatches, setSavedWatches] = useState<string[]>([]);
   const [followedMarkets, setFollowedMarkets] = useState<string[]>(['Indonesia', 'Vietnam', 'Singapore']);
+  const [liveSignals, setLiveSignals] = useState<SignalCard[]>([]);
+  const [liveFetching, setLiveFetching] = useState(true);
 
-  // Filter signals
+  useEffect(() => {
+    fetch('/api/feed')
+      .then(r => r.json())
+      .then(data => {
+        if (data.signals) {
+          setLiveSignals((data.signals as ApiSignal[]).map(apiSignalToCard));
+        }
+      })
+      .catch(() => {/* silently use mock data */})
+      .finally(() => setLiveFetching(false));
+  }, []);
+
+  // Filter signals — live API data shown first, then static mock data
   const filteredSignals = useMemo(() => {
-    let signals = [...FEATURED_SIGNALS, ...LIVE_SIGNALS];
+    const mockSignals = [...FEATURED_SIGNALS, ...LIVE_SIGNALS];
+    let signals = liveSignals.length > 0 ? [...liveSignals, ...mockSignals] : mockSignals;
 
     if (activeTab === 'opening-window') signals = signals.filter(s => s.signalType === 'opening-window');
     else if (activeTab === 'pattern-transfer') signals = signals.filter(s => s.signalType === 'pattern-transfer');
     else if (activeTab === 'saturation-alert') signals = signals.filter(s => s.signalType === 'saturation-alert');
-    else if (activeTab === 'regulation') signals = signals.filter(s => s.evidence.includes('Regulation tailwind'));
-    else if (activeTab === 'funding-hiring') signals = signals.filter(s => s.evidence.some(e => ['Funding spike', 'Hiring growth'].includes(e)));
+    else if (activeTab === 'regulation') signals = signals.filter(s => s.evidence.some(e => e.toLowerCase().includes('regulation')));
+    else if (activeTab === 'funding-hiring') signals = signals.filter(s => s.evidence.some(e => ['Funding spike', 'Hiring growth', 'Funding', 'Hiring'].includes(e)));
 
     if (selectedCategory) signals = signals.filter(s => s.category === selectedCategory);
     if (selectedSourceMarket) signals = signals.filter(s => s.sourceMarket === selectedSourceMarket);
@@ -209,7 +257,7 @@ export default function SignalFeedPage() {
     if (confidenceFilter) signals = signals.filter(s => s.confidence === confidenceFilter);
 
     return signals;
-  }, [activeTab, selectedCategory, selectedSourceMarket, selectedTargetMarket, confidenceFilter]);
+  }, [activeTab, selectedCategory, selectedSourceMarket, selectedTargetMarket, confidenceFilter, liveSignals]);
 
   const toggleSavedWatch = (id: string) => {
     setSavedWatches(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -259,7 +307,20 @@ export default function SignalFeedPage() {
         
         {/* HERO SECTION */}
         <section className="mb-10">
-          <h1 className="text-5xl font-display font-bold text-white tracking-tight mb-3">Signal Feed</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <h1 className="text-5xl font-display font-bold text-white tracking-tight">Signal Feed</h1>
+            {liveFetching ? (
+              <span className="flex items-center gap-1.5 text-xs font-mono text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+                Fetching live signals…
+              </span>
+            ) : liveSignals.length > 0 ? (
+              <span className="flex items-center gap-1.5 text-xs font-mono text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                {liveSignals.length} live signals
+              </span>
+            ) : null}
+          </div>
           <p className="text-xl text-gray-400 max-w-3xl leading-relaxed">
             Track live signals showing which startup patterns are opening, transferring, or saturating across emerging markets. Not news. Pure pattern intelligence.
           </p>
@@ -291,9 +352,11 @@ export default function SignalFeedPage() {
 
         {/* FEATURED SIGNALS ROW */}
         <section className="mb-12">
-          <h2 className="text-sm font-mono uppercase tracking-widest text-gray-500 mb-4">This Week's Strongest Signals</h2>
+          <h2 className="text-sm font-mono uppercase tracking-widest text-gray-500 mb-4">
+            {liveSignals.length > 0 ? 'Latest Live Signals' : "This Week's Strongest Signals"}
+          </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {FEATURED_SIGNALS.slice(0, 3).map(signal => (
+            {(liveSignals.length > 0 ? liveSignals : FEATURED_SIGNALS).slice(0, 3).map(signal => (
               <div key={signal.id} className="bg-[#111113] border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">

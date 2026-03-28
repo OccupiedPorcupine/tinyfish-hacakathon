@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+
+interface MigrationVector {
+  source: string;
+  target: string;
+  weight: number;
+  category: string;
+}
 
 // Opportunity Sources
 type OpportunitySource = 
@@ -381,6 +388,20 @@ export default function MarketsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | 'All'>('All');
   const [selectedMarket, setSelectedMarket] = useState<string | 'All'>('All');
   const [selectedTimeRange, setSelectedTimeRange] = useState<string | 'Last 30 days'>('Last 30 days');
+  const [liveVectors, setLiveVectors] = useState<MigrationVector[] | null>(null);
+  const [vectorsFetching, setVectorsFetching] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/markets')
+      .then(r => r.json())
+      .then(data => {
+        if (data.vectors && data.vectors.length > 0) {
+          setLiveVectors(data.vectors);
+        }
+      })
+      .catch(() => {/* silently use mock data */})
+      .finally(() => setVectorsFetching(false));
+  }, []);
 
   const filteredOpportunities = useMemo(() => {
     return OPPORTUNITIES.filter(opp => {
@@ -391,7 +412,15 @@ export default function MarketsPage() {
   }, [selectedCategory, selectedMarket]);
 
   const categoryMomentum = calculateCategoryMomentum();
-  const migrationSignals = getMigrationSignals();
+
+  const migrationSignals = liveVectors
+    ? liveVectors.slice(0, 4).map(v => ({
+        opportunity: v.category,
+        path: `${v.source} → ${v.target}`,
+        confidence: v.weight >= 80 ? 'High confidence' : v.weight >= 60 ? 'Moderate confidence' : 'Early signal',
+        window: v.weight >= 80 ? 'Inflecting now' : v.weight >= 60 ? '6-12mo window' : '12-18mo window',
+      }))
+    : getMigrationSignals();
 
   return (
     <div className="min-h-screen bg-[#0a0a0b]">
@@ -450,7 +479,18 @@ export default function MarketsPage() {
 
           {/* Pattern Migration Signals */}
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6">
-            <div className="text-xs font-mono text-gray-400 uppercase tracking-widest mb-6">Pattern Migration Signals</div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="text-xs font-mono text-gray-400 uppercase tracking-widest">Pattern Migration Signals</div>
+              {vectorsFetching ? (
+                <span className="flex items-center gap-1 text-[10px] font-mono text-brand-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />live
+                </span>
+              ) : liveVectors ? (
+                <span className="flex items-center gap-1 text-[10px] font-mono text-green-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />live
+                </span>
+              ) : null}
+            </div>
             <div className="space-y-4">
               {migrationSignals.map((sig, i) => (
                 <div key={i} className="pb-4 border-b border-white/5 last:border-0 last:pb-0">
