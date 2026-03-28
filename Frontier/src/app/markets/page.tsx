@@ -392,11 +392,23 @@ export default function MarketsPage() {
   const [vectorsFetching, setVectorsFetching] = useState(true);
 
   useEffect(() => {
+    // Load from sessionStorage immediately (instant on return visits)
+    const cached = sessionStorage.getItem('geogap-markets');
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        if (data.vectors?.length) setLiveVectors(data.vectors);
+        setVectorsFetching(false);
+        return;
+      } catch {}
+    }
+
     fetch('/api/markets')
       .then(r => r.json())
       .then(data => {
-        if (data.vectors && data.vectors.length > 0) {
+        if (data.vectors?.length) {
           setLiveVectors(data.vectors);
+          sessionStorage.setItem('geogap-markets', JSON.stringify(data));
         }
       })
       .catch(() => {/* silently use mock data */})

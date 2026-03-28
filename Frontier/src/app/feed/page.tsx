@@ -229,11 +229,25 @@ export default function SignalFeedPage() {
   const [liveFetching, setLiveFetching] = useState(true);
 
   useEffect(() => {
+    // Load from sessionStorage immediately (instant on return visits)
+    const cached = sessionStorage.getItem('geogap-feed');
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        if (data.signals) {
+          setLiveSignals((data.signals as ApiSignal[]).map(apiSignalToCard));
+        }
+        setLiveFetching(false);
+        return;
+      } catch {}
+    }
+
     fetch('/api/feed')
       .then(r => r.json())
       .then(data => {
         if (data.signals) {
           setLiveSignals((data.signals as ApiSignal[]).map(apiSignalToCard));
+          sessionStorage.setItem('geogap-feed', JSON.stringify(data));
         }
       })
       .catch(() => {/* silently use mock data */})

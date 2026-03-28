@@ -106,33 +106,49 @@ export default function DashboardTerminal() {
   const [dashFetching, setDashFetching] = useState(true);
 
   useEffect(() => {
+    // Load from sessionStorage immediately (instant on return visits)
+    const cached = sessionStorage.getItem('geogap-dashboard');
+    if (cached) {
+      try {
+        const data = JSON.parse(cached);
+        applyDashboardData(data);
+        setDashFetching(false);
+        return; // skip API call — already have data
+      } catch {}
+    }
+
     fetch('/api/dashboard')
       .then(r => r.json())
       .then(data => {
-        if (data.opportunities?.length) {
-          setOpportunities(data.opportunities.map((op: any, i: number) => ({
-            id: op.id || String(i + 1),
-            category: op.category,
-            market: op.market,
-            sector: op.analogs?.[0] || 'Tech',
-            x: op.competitionDensity ?? 50,
-            y: op.momentum ?? 50,
-            score: op.score,
-            confidence: op.confidence,
-            demand: op.demand,
-            trend: op.trend,
-            analogs: op.analogs || [],
-            whyNow: op.whyNow,
-          })));
-          setDashLive(true);
-        }
-        if (data.risingCategories?.length) setRisingCategories(data.risingCategories);
-        if (data.migrationSignals?.length) setMigrationSignals(data.migrationSignals);
-        if (data.fundingSignals?.length) setFundingSignals(data.fundingSignals);
+        applyDashboardData(data);
+        sessionStorage.setItem('geogap-dashboard', JSON.stringify(data));
       })
       .catch(() => {/* silently use fallback */})
       .finally(() => setDashFetching(false));
   }, []);
+
+  function applyDashboardData(data: any) {
+    if (data.opportunities?.length) {
+      setOpportunities(data.opportunities.map((op: any, i: number) => ({
+        id: op.id || String(i + 1),
+        category: op.category,
+        market: op.market,
+        sector: op.analogs?.[0] || 'Tech',
+        x: op.competitionDensity ?? 50,
+        y: op.momentum ?? 50,
+        score: op.score,
+        confidence: op.confidence,
+        demand: op.demand,
+        trend: op.trend,
+        analogs: op.analogs || [],
+        whyNow: op.whyNow,
+      })));
+      setDashLive(true);
+    }
+    if (data.risingCategories?.length) setRisingCategories(data.risingCategories);
+    if (data.migrationSignals?.length) setMigrationSignals(data.migrationSignals);
+    if (data.fundingSignals?.length) setFundingSignals(data.fundingSignals);
+  }
 
   // Matrix State
   const [timeFilter, setTimeFilter] = useState('7D');
