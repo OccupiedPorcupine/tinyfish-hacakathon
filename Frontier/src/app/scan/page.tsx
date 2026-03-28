@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ScanResult } from '@/lib/tinyfish/types';
 import { ScoreCard } from '@/components/ui/ScoreCard';
 import { EvidencePanel } from '@/components/ui/EvidencePanel';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 
 function RadarContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const id = searchParams.get('id');
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,7 +18,7 @@ function RadarContent() {
 
   useEffect(() => {
     if (!id) {
-      setError('No scan ID provided.');
+      setError('No scan ID provided. Please run a scan from the dashboard.');
       setLoading(false);
       return;
     }
@@ -34,14 +35,15 @@ function RadarContent() {
         }
         const data = await res.json();
         
-        if (data.status === 'completed') {
-          setResult(data as ScanResult);
+        if (data.status === 'pending' || data.status === 'processing') {
+          // keep polling
+        } else if (data.status === 'failed') {
+          setError(data.error ?? 'Scan failed.');
           setLoading(false);
           clearInterval(intervalId);
-        } else if (data.status === 'pending' || data.status === 'processing') {
-          // keep polling
-        } else {
-          setError('Scan failed.');
+        } else if (data.scores) {
+          // completed — API returns the full ScanResult directly
+          setResult(data as ScanResult);
           setLoading(false);
           clearInterval(intervalId);
         }

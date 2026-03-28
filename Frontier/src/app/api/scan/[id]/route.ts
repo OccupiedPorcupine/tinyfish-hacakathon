@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
-
-const globalStore = global as any;
+import { readCache } from '@/lib/cache';
+import { ScanResult } from '@/lib/tinyfish/types';
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> } // Next.js 15 route handler param typing
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const id = (await params).id;
-  const scan = globalStore.scans?.get(id);
+
+  // Scans never expire — pass a very large TTL
+  const scan = readCache<ScanResult | { status: string; id: string; error?: string }>(
+    `scan-${id}`,
+    Number.MAX_SAFE_INTEGER
+  );
 
   if (!scan) {
     return NextResponse.json({ error: 'Scan not found' }, { status: 404 });
   }
 
-  if (scan.status === 'completed') {
-    return NextResponse.json(scan.result);
+  // If still pending/processing, return status only
+  if ('status' in scan && (scan.status === 'pending' || scan.status === 'processing')) {
+    return NextResponse.json({ status: scan.status, id });
   }
 
-  return NextResponse.json({ status: scan.status, id });
+  // If failed, return error
+  if ('status' in scan && scan.status === 'failed') {
+    return NextResponse.json({ status: 'failed', error: scan.error ?? 'Unknown error' }, { status: 500 });
+  }
+
+  // Completed — return the full result
+  return NextResponse.json(scan);
 }

@@ -1,7 +1,54 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { MigrationVector } from '@/app/api/markets/route';
+
+function VectorRow({ source, target, weight, category }: MigrationVector) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-20 text-right font-medium text-gray-300">{source}</div>
+      <div className="flex-1 h-3 bg-dark-600 rounded-full relative overflow-hidden group">
+        <div
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-all group-hover:brightness-125"
+          style={{ width: `${weight}%` }}
+        >
+          <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ transform: 'translateX(-100%)' }} />
+        </div>
+      </div>
+      <div className="w-28 font-medium text-white">{target}</div>
+      <div className="hidden sm:block w-36 text-xs text-brand-400 font-mono text-right">{category}</div>
+    </div>
+  );
+}
+
+function SkeletonVector() {
+  return (
+    <div className="flex items-center gap-4 animate-pulse">
+      <div className="w-20 h-4 bg-dark-600 rounded" />
+      <div className="flex-1 h-3 bg-dark-600 rounded-full" />
+      <div className="w-28 h-4 bg-dark-600 rounded" />
+      <div className="hidden sm:block w-36 h-4 bg-dark-600 rounded" />
+    </div>
+  );
+}
 
 export default function PatternMigrationPage() {
+  const [vectors, setVectors] = useState<MigrationVector[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/markets')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setVectors(data.vectors);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <div className="mb-10">
@@ -12,25 +59,30 @@ export default function PatternMigrationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
         <Card gradient>
           <h2 className="text-xl font-display font-medium text-white mb-6">Active Migration Vectors</h2>
-          <div className="space-y-6 flex flex-col justify-center h-[300px]">
-            <VectorRow source="US" target="Singapore" weight={85} category="B2B Vertical SaaS" />
-            <VectorRow source="India" target="Indonesia" weight={92} category="Quick Commerce" />
-            <VectorRow source="Brazil" target="Vietnam" weight={78} category="Embedded Finance" />
-            <VectorRow source="China" target="Indonesia" weight={88} category="Live Commerce" />
+          <div className="space-y-6 flex flex-col justify-center min-h-[300px]">
+            {loading && Array.from({ length: 4 }).map((_, i) => <SkeletonVector key={i} />)}
+
+            {error && (
+              <p className="text-red-400 text-sm text-center">{error}</p>
+            )}
+
+            {!loading && !error && vectors.slice(0, 6).map((v, i) => (
+              <VectorRow key={i} {...v} />
+            ))}
           </div>
         </Card>
-        
+
         <Card>
           <h2 className="text-xl font-display font-medium text-white mb-6">Maturity Timeline Mapping</h2>
           <div className="flex flex-col space-y-8 relative">
             <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-brand-900" />
-            
+
             <div className="relative pl-10">
               <div className="absolute left-3.5 top-1.5 w-2 h-2 rounded-full bg-brand-500" />
               <h4 className="text-white font-medium mb-1">Source Inflection (T-0)</h4>
               <p className="text-sm text-gray-400">Market validates business model unit economics.</p>
             </div>
-            
+
             <div className="relative pl-10">
               <div className="absolute left-3.5 top-1.5 w-2 h-2 rounded-full bg-blue-500" />
               <h4 className="text-white font-medium mb-1">Early Cloning (T+18mo)</h4>
@@ -39,7 +91,7 @@ export default function PatternMigrationPage() {
 
             <div className="relative pl-10">
               <div className="absolute left-2.5 top-1 w-4 h-4 rounded-full bg-green-500/20 flex items-center justify-center">
-                 <div className="w-2 h-2 rounded-full bg-green-500" />
+                <div className="w-2 h-2 rounded-full bg-green-500" />
               </div>
               <h4 className="text-green-400 font-bold mb-1">The Opportunity Window (T+24mo)</h4>
               <p className="text-sm text-gray-400">Ideal timing for localized execution with strong seed funding access.</p>
@@ -47,24 +99,6 @@ export default function PatternMigrationPage() {
           </div>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function VectorRow({ source, target, weight, category }: { source: string; target: string; weight: number; category: string }) {
-  return (
-    <div className="flex items-center gap-4">
-      <div className="w-20 text-right font-medium text-gray-300">{source}</div>
-      <div className="flex-1 h-3 bg-dark-600 rounded-full relative overflow-hidden group">
-        <div 
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-600 to-brand-400 rounded-full transition-all group-hover:brightness-125"
-          style={{ width: `${weight}%` }}
-        >
-          <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ transform: 'translateX(-100%)' }} />
-        </div>
-      </div>
-      <div className="w-28 font-medium text-white">{target}</div>
-      <div className="hidden sm:block w-36 text-xs text-brand-400 font-mono text-right">{category}</div>
     </div>
   );
 }

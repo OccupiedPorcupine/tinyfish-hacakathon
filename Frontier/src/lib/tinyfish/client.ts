@@ -1,99 +1,60 @@
-import { GapRadarRequest, ScanResult, TinyFishRawResponse } from './types';
-import { normalizeScanResult } from './normalizers';
+import { GapRadarRequest, ScanResult } from './types';
+import { runTinyFishTask } from './sse-client';
+import { structureData } from '@/lib/openai/client';
 
 export async function runMarketScan(request: GapRadarRequest): Promise<ScanResult> {
-  if (!process.env.TINYFISH_API_KEY) {
-    console.warn("TINYFISH_API_KEY is not set. Falling back to mock data.");
-    // Simulate network/LLM processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  const id = crypto.randomUUID();
 
-    const mockRawResponse: TinyFishRawResponse = {
-      analysis_id: crypto.randomUUID(),
-      confidence: 88,
-      explanation: `Target markets show strong indicators for '${request.query}' driven by rapid digital adoption and a growing middle class, mirroring early stages of ${request.sourceMarkets.join(' and ')}.`,
-      markets: request.targetMarkets.map((market, i) => ({
-        name: market,
-        metrics: {
-          window: 75 + (i * 5),
-          validation: 80 - (i * 2),
-          space: 60 + (i * 10),
-          pain: 85 - i,
-          momentum: 90 - (i * 5),
-          local: 70 + (i * 8),
-        }
-      })),
-      evidence_points: [
-        { text: "Recent $50M Series B in similar vertical", category: "funding", name: "Tech in Asia" },
-        { text: "Regulatory sandbox opened for digital models", category: "regulation", name: "GovTech Portal" },
-        { text: "Surge in product manager hiring", category: "hiring", name: "LinkedIn Data" }
-      ],
-      density_map: request.targetMarkets.map((m, i) => ({ market: m, level: i === 0 ? 'High' : (i === 1 ? 'Medium' : 'Low') as any })),
-      recommendation: "Establish a localized GTM motion wedge targeting Tier-2 cities where competitor density is low but digital adoption is inflecting.",
-      timeline: [
-        { d: "2025 Q3", e: "Early local clones appear" },
-        { d: "2025 Q4", e: "First major regulatory framework introduced" },
-        { d: "2026 Q1", e: "Growth phase inflection point" }
-      ]
-    };
+  const goal = `Research the startup market opportunity for "${request.query}" in these target markets: ${request.targetMarkets.join(', ')}.
 
-    return normalizeScanResult(mockRawResponse, request.query);
-  }
+Compare against mature source markets where this model has already proven itself: ${request.sourceMarkets.join(', ')}.
 
-  const prompt = `Search the web for market analysis, startup trends, and funding news related to '${request.query}'. Compare the mature source markets (${request.sourceMarkets.join(', ')}) to the emerging target markets (${request.targetMarkets.join(', ')}). Extract the findings into a precise JSON object with the following structure:
-  {
-    "analysis_id": "a unique string",
-    "confidence": a number between 0 and 100,
-    "explanation": "a detailed string explaining the findings",
-    "markets": [
-      {
-        "name": "Market Name",
-        "metrics": { "window": 1-100, "validation": 1-100, "space": 1-100, "pain": 1-100, "momentum": 1-100, "local": 1-100 }
-      }
-    ],
-    "evidence_points": [
-      { "text": "string describing evidence", "category": "funding|regulation|hiring", "name": "source name" }
-    ],
-    "density_map": [
-      { "market": "Market Name", "level": "High|Medium|Low" }
-    ],
-    "recommendation": "string recommending a GTM motion",
-    "timeline": [
-      { "d": "Date/Quarter string", "e": "event description" }
-    ]
-  }
-  Respond ONLY with the JSON object.`;
+For each target market, search for:
+1. Recent startup funding rounds in this category
+2. Company hiring signals (job postings in this space)
+3. Regulatory changes or government initiatives affecting this model
+4. Market size trends, growth rates, and user adoption signals
+5. Existing local competitors and their traction
+6. Specific reasons why NOW is or isn't a good entry window
 
-  const payload = {
-    url: "https://google.com",
-    goal: prompt,
-    browser_profile: "lite"
-  };
+Be specific per market. Use real company names and data where possible.`;
 
-  try {
-    const res = await fetch("https://agent.tinyfish.ai/v1/automation/run", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": process.env.TINYFISH_API_KEY
-      },
-      body: JSON.stringify(payload)
-    });
+  const raw = await runTinyFishTask('https://techcrunch.com', goal);
 
-    if (!res.ok) {
-      throw new Error(`TinyFish API error: ${res.statusText}`);
-    }
+  const result = await structureData<ScanResult>(
+    raw,
+    `Return a JSON object with exactly these fields:
 
-    const data = await res.json();
-    
-    if (data.status !== "COMPLETED" || data.error) {
-      throw new Error(data.error || "Automation did not complete successfully.");
-    }
+"id": "${id}"
+"status": "completed"
+"query": "${request.query}"
+"confidenceScore": integer 0-100 based on data quality found
+"shortExplanation": 2-3 sentence executive summary of the opportunity
 
-    const rawResult = data.result;
-    return normalizeScanResult(rawResult as TinyFishRawResponse, request.query);
-  } catch (error) {
-    console.error("Error connecting to TinyFish API:", error);
-    throw error;
-  }
+"scores": array with one object per target market (${request.targetMarkets.map(m => `"${m}"`).join(', ')}), each with:
+  "market": market name string
+  "opportunityWindow": integer 0-100
+  "validation": integer 0-100
+  "whitespace": integer 0-100
+  "pain": integer 0-100
+  "momentum": integer 0-100
+  "localization": integer 0-100
+
+"evidence": array of 4-6 objects, each with:
+  "text": string describing specific evidence found (funding round, job posting, regulation, trend)
+  "type": one of "funding" | "hiring" | "regulation" | "trend"
+  "sourceName": publication or source name (optional)
+
+"competitorDensity": array with one object per target market, each with:
+  "market": market name string
+  "density": one of "Low" | "Medium" | "High"
+
+"wedgeRecommendation": paragraph recommending the best GTM entry motion
+
+"signalTimeline": array of 3-4 objects, each with:
+  "date": quarter string like "2025 Q3" or "2026 Q1"
+  "event": description of a key market event or milestone`
+  );
+
+  return result;
 }
-

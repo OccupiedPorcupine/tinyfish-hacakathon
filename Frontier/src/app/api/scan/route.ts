@@ -1,42 +1,36 @@
 import { NextResponse } from 'next/server';
 import { GapRadarRequest } from '@/lib/tinyfish/types';
-
-// In-memory store for demo purposes (would be Redis/DB in prod)
-const globalStore = global as any;
-if (!globalStore.scans) {
-  globalStore.scans = new Map();
-}
+import { writeCache } from '@/lib/cache';
 
 export async function POST(request: Request) {
   try {
     const body: GapRadarRequest = await request.json();
     const id = crypto.randomUUID();
-    
-    globalStore.scans.set(id, {
-      status: 'pending',
-      request: body,
-      createdAt: Date.now()
-    });
 
-    // Fire and forget the background simulation
-    startSimulatedBackgroundScan(id, body);
+    // Write pending status immediately so polling can start
+    writeCache(`scan-${id}`, { status: 'pending', id });
+
+    // Fire and forget — runs in background while frontend polls
+    runScanInBackground(id, body);
 
     return NextResponse.json({ id, status: 'pending' });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to start scan' }, { status: 500 });
   }
 }
 
-async function startSimulatedBackgroundScan(id: string, request: GapRadarRequest) {
+async function runScanInBackground(id: string, request: GapRadarRequest) {
   const { runMarketScan } = await import('@/lib/tinyfish/client');
   try {
+    console.log(`[scan] Starting scan ${id} for "${request.query}"`);
+    writeCache(`scan-${id}`, { status: 'processing', id });
+
     const result = await runMarketScan(request);
-    globalStore.scans.set(id, {
-      status: 'completed',
-      result,
-      updatedAt: Date.now()
-    });
+
+    writeCache(`scan-${id}`, result);
+    console.log(`[scan] Completed scan ${id}`);
   } catch (err) {
-    globalStore.scans.set(id, { status: 'failed', error: String(err) });
+    console.error(`[scan] Failed scan ${id}:`, err);
+    writeCache(`scan-${id}`, { status: 'failed', id, error: String(err) });
   }
 }
