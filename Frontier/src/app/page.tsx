@@ -107,7 +107,7 @@ export default function DashboardTerminal() {
 
   useEffect(() => {
     // Load from sessionStorage immediately (instant on return visits)
-    const cached = sessionStorage.getItem('geogap-dashboard');
+    const cached = sessionStorage.getItem('frontier-dashboard');
     if (cached) {
       try {
         const data = JSON.parse(cached);
@@ -121,7 +121,7 @@ export default function DashboardTerminal() {
       .then(r => r.json())
       .then(data => {
         applyDashboardData(data);
-        sessionStorage.setItem('geogap-dashboard', JSON.stringify(data));
+        sessionStorage.setItem('frontier-dashboard', JSON.stringify(data));
       })
       .catch(() => {/* silently use fallback */})
       .finally(() => setDashFetching(false));

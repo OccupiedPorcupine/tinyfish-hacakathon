@@ -43,7 +43,7 @@ export default function SignInPage() {
       <div className="w-full max-w-md">
         {/* Logo / Branding */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-display font-bold text-white mb-2">GeoGap</h1>
+          <h1 className="text-4xl font-display font-bold text-white mb-2">Frontier</h1>
           <p className="text-gray-400 text-sm">Founder-fit startup opportunities</p>
         </div>
 

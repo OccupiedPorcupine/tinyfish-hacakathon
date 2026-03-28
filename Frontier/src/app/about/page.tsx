@@ -23,7 +23,7 @@ export default function LandingPage() {
         </h1>
         
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12 font-sans font-light leading-relaxed">
-          GeoGap compares mature source markets like the US & India with emerging target markets like SEA to identify statistically validated whitespace for your next big idea.
+          Frontier compares mature source markets like the US & India with emerging target markets like SEA to identify statistically validated whitespace for your next big idea.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 items-center">

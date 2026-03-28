@@ -184,7 +184,7 @@ export default function FounderFitPage() {
   const [fitLive, setFitLive] = useState(false);
 
   useEffect(() => {
-    const cached = sessionStorage.getItem('geogap-founder-fit');
+    const cached = sessionStorage.getItem('frontier-founder-fit');
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -203,7 +203,7 @@ export default function FounderFitPage() {
       .then(res => res.json())
       .then(data => {
         if (data?.opportunities?.length > 0) {
-          sessionStorage.setItem('geogap-founder-fit', JSON.stringify(data));
+          sessionStorage.setItem('frontier-founder-fit', JSON.stringify(data));
           setFitOpportunities(prev => mergeApiOpportunities(prev, data.opportunities));
           setFitLive(true);
         }

@@ -393,7 +393,7 @@ export default function MarketsPage() {
 
   useEffect(() => {
     // Load from sessionStorage immediately (instant on return visits)
-    const cached = sessionStorage.getItem('geogap-markets');
+    const cached = sessionStorage.getItem('frontier-markets');
     if (cached) {
       try {
         const data = JSON.parse(cached);
@@ -408,7 +408,7 @@ export default function MarketsPage() {
       .then(data => {
         if (data.vectors?.length) {
           setLiveVectors(data.vectors);
-          sessionStorage.setItem('geogap-markets', JSON.stringify(data));
+          sessionStorage.setItem('frontier-markets', JSON.stringify(data));
         }
       })
       .catch(() => {/* silently use mock data */})

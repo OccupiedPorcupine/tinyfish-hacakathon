@@ -36,10 +36,10 @@ export function Navbar() {
       <div className="flex h-16 items-center px-4 md:px-8 mx-auto max-w-7xl">
         <div className="flex items-center gap-2 mr-8">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-brand-500 flex items-center justify-center text-white font-bold font-display shadow-lg shadow-brand-500/20">
-            G
+            F
           </div>
           <Link href="/" className="text-xl font-bold font-display tracking-tight hover:text-brand-100 transition-colors">
-            GeoGap
+            Frontier
           </Link>
         </div>
 

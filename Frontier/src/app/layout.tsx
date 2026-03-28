@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "GeoGap | Cross-Market Window of Opportunity Analyzer",
+  title: "Frontier | Cross-Market Window of Opportunity Analyzer",
   description: "Identify gap opportunities between source and target markets with localized insights and signals.",
 };
 
