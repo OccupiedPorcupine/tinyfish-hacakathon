@@ -1,14 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { clearAuthToken, isAuthenticated } from '@/lib/auth';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Check authentication status on mount
+  useEffect(() => {
+    setAuthenticated(isAuthenticated());
+    setHydrated(true);
+  }, []);
+
+  const handleSignOut = () => {
+    clearAuthToken();
+    setAuthenticated(false);
+    router.push('/');
+  };
 
   const navLinks = [
     { name: 'Dashboard', href: '/' },
-    { name: 'Run Scan', href: '/#scan' },
+    { name: 'Run Scan', href: '/scan' },
     { name: 'Markets', href: '/markets' },
     { name: 'Founder Fit', href: '/founder-fit' },
     { name: 'Funding Feed', href: '/feed' },
@@ -45,12 +62,42 @@ export function Navbar() {
         </div>
 
         <div className="ml-auto flex items-center gap-4">
-          <button className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
-            Sign In
-          </button>
-          <button className="text-sm font-semibold bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-full transition-all shadow-lg shadow-brand-500/20">
-            Start Scanning
-          </button>
+          {!hydrated ? (
+            // Loading state - show nothing
+            null
+          ) : authenticated ? (
+            // Authenticated state
+            <>
+              <Link
+                href="/founder-fit/onboard"
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Edit Profile
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            // Unauthenticated state
+            <>
+              <Link
+                href="/signin"
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="text-sm font-semibold bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-full transition-all shadow-lg shadow-brand-500/20"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

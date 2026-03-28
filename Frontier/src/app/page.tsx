@@ -1,57 +1,65 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { DashboardData, Opportunity } from '@/app/api/dashboard/route';
 
-const FALLBACK: DashboardData = {
-  opportunities: [
-    { id: 'ai-sales-id', category: 'AI Sales Agents', market: 'Indonesia', momentum: 88, competitionDensity: 35, demand: 85, score: 92, confidence: 89, trend: '+24%', whyNow: 'SMB digitization wave colliding with LLM accessibility. Local incumbents lack modern AI features.', analogs: ['US', 'India'] },
-    { id: 'embed-fin-vn', category: 'Embedded Finance', market: 'Vietnam', momentum: 76, competitionDensity: 42, demand: 70, score: 84, confidence: 82, trend: '+18%', whyNow: 'Regulatory sandboxes opening up parallel to non-bank retail growth.', analogs: ['Brazil', 'US'] },
-    { id: 'creator-sg', category: 'Creator Tools', market: 'Singapore', momentum: 65, competitionDensity: 82, demand: 60, score: 68, confidence: 91, trend: '-4%', whyNow: 'High saturation from global incumbents. Only hyper-niche workflows viable.', analogs: ['US'] },
-    { id: 'health-ph', category: 'HealthTech', market: 'Philippines', momentum: 92, competitionDensity: 15, demand: 90, score: 96, confidence: 78, trend: '+31%', whyNow: 'Severe infra gaps being closed by new telehealth mandates and rising middle class.', analogs: ['India', 'Brazil'] },
-    { id: 'b2b-saas-th', category: 'B2B Logistics SaaS', market: 'Thailand', momentum: 74, competitionDensity: 65, demand: 80, score: 75, confidence: 85, trend: '+12%', whyNow: 'Supply chain fragmentation driving demand for unified visibility platforms.', analogs: ['US', 'India'] },
-    { id: 'sme-lending-my', category: 'SME Lending Infra', market: 'Malaysia', momentum: 55, competitionDensity: 48, demand: 65, score: 60, confidence: 80, trend: '+6%', whyNow: 'Open banking initiatives slowly gaining traction among traditional B2B lenders.', analogs: ['UK', 'Singapore'] },
-  ],
-  risingCategories: [
-    { category: 'Embedded Finance', market: 'Vietnam', trend: '+18.2%', declining: false },
-    { category: 'B2B E-commerce', market: 'Indonesia', trend: '+12.4%', declining: false },
-    { category: 'HealthTech', market: 'Vietnam', trend: '+8.9%', declining: false },
-    { category: 'EdTech', market: 'Indonesia', trend: '-12.6%', declining: true },
-  ],
-  migrationSignals: [
-    { category: 'AI SDR Tools', path: ['US', 'IN', 'ID'], confidence: 'High confidence', window: '3-6mo window' },
-    { category: 'SME Embedded Finance', path: ['BR', 'VN'], confidence: 'Moderate confidence', window: 'inflecting now' },
-    { category: 'Vertical Clinic SaaS', path: ['IN', 'PH'], confidence: 'High confidence', window: 'lagging 18mo behind' },
-  ],
-  fundingSignals: [
-    { company: 'DataForge', round: '$12M Series A', market: 'SG', sector: 'Data Infrastructure' },
-    { company: 'KrediCepat', round: '$5M Seed', market: 'ID', sector: 'Consumer Lending' },
-    { company: 'MediSync', round: '$8M Pre-Series A', market: 'VN', sector: 'HealthTech' },
-  ],
-};
+// Realistic sample data matching the prompt - with intentional quadrant distribution
+const OPPORTUNITIES = [
+  {
+    id: '1', category: 'AI Sales Agents', market: 'Indonesia', sector: 'SaaS',
+    x: 34, y: 84, score: 92, confidence: 84, demand: 78,
+    trend: '+14%', analogs: ['US', 'India'], whyNow: 'Strong SMB digitization tailwinds and relatively weak local category leaders.'
+  },
+  {
+    id: '2', category: 'Vertical SaaS for Clinics', market: 'Vietnam', sector: 'HealthTech',
+    x: 28, y: 78, score: 89, confidence: 83, demand: 66,
+    trend: '+13%', analogs: ['India'], whyNow: 'Clinic digitization demand is rising quickly with limited specialized incumbents.'
+  },
+  {
+    id: '3', category: 'Embedded Finance', market: 'Vietnam', sector: 'Fintech',
+    x: 44, y: 76, score: 88, confidence: 81, demand: 74,
+    trend: '+18%', analogs: ['Brazil', 'India'], whyNow: 'Growing SME financial infrastructure demand and rising digital commerce adoption.'
+  },
+  {
+    id: '4', category: 'HealthTech Workflow SaaS', market: 'Philippines', sector: 'HealthTech',
+    x: 22, y: 58, score: 85, confidence: 77, demand: 64,
+    trend: '+11%', analogs: ['India'], whyNow: 'Operational digitization demand is rising while incumbents remain fragmented.'
+  },
+  {
+    id: '5', category: 'B2B Logistics SaaS', market: 'Thailand', sector: 'B2B',
+    x: 56, y: 60, score: 79, confidence: 75, demand: 72,
+    trend: '+9%', analogs: ['China', 'India'], whyNow: 'Logistics modernization is increasing and category maturity is still moderate.'
+  },
+  {
+    id: '6', category: 'SME Lending Infrastructure', market: 'Malaysia', sector: 'Fintech',
+    x: 66, y: 52, score: 71, confidence: 73, demand: 69,
+    trend: '+7%', analogs: ['Brazil'], whyNow: 'Lender digitization is improving, but competition is building.'
+  },
+  {
+    id: '7', category: 'Quick Commerce Enablement', market: 'Indonesia', sector: 'B2B',
+    x: 62, y: 44, score: 66, confidence: 70, demand: 76,
+    trend: '+4%', analogs: ['India', 'LATAM'], whyNow: 'Large operational demand exists, but the category is getting more crowded.'
+  },
+  {
+    id: '8', category: 'Creator Monetization Tools', market: 'Singapore', sector: 'Consumer',
+    x: 78, y: 64, score: 61, confidence: 69, demand: 67,
+    trend: '+5%', analogs: ['US'], whyNow: 'High monetization readiness but increasingly crowded vendor landscape.'
+  },
+  {
+    id: '9', category: 'KYC / Compliance API', market: 'Singapore', sector: 'Fintech',
+    x: 83, y: 46, score: 54, confidence: 72, demand: 63,
+    trend: '+3%', analogs: ['US', 'UK'], whyNow: 'Strong compliance need, but heavy incumbent density limits whitespace.'
+  },
+  {
+    id: '10', category: 'Blue-collar Workforce Tech', market: 'Philippines', sector: 'B2B',
+    x: 18, y: 34, score: 82, confidence: 76, demand: 71,
+    trend: '+10%', analogs: ['India'], whyNow: 'Labor market digitization is improving and category competition remains low.'
+  }
+];
 
 export default function DashboardTerminal() {
   const router = useRouter();
-
-  // Dashboard live data
-  const [dashData, setDashData] = useState<DashboardData>(FALLBACK);
-  const [liveUpdating, setLiveUpdating] = useState(true);
-  const [liveReady, setLiveReady] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/dashboard')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.error && data.opportunities?.length) {
-          setDashData(data);
-          setLiveReady(true);
-        }
-      })
-      .catch(() => { /* keep fallback */ })
-      .finally(() => setLiveUpdating(false));
-  }, []);
 
   // Scan Module State
   const [scanCat, setScanCat] = useState('');
@@ -59,34 +67,44 @@ export default function DashboardTerminal() {
   const [scanTarget, setScanTarget] = useState('');
   const [scanPriority, setScanPriority] = useState('Whitespace');
   const [isScanning, setIsScanning] = useState(false);
-  const [scanError, setScanError] = useState('');
 
   // Matrix State
   const [timeFilter, setTimeFilter] = useState('7D');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [viewBy, setViewBy] = useState<'Category' | 'Market'>('Category');
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const opportunities = dashData.opportunities;
+  const [selectedId, setSelectedId] = useState<string | null>('1'); // Default selection
 
   const filteredData = useMemo(() => {
-    return opportunities.filter(op =>
-      categoryFilter === 'All' ||
-      op.category.includes(categoryFilter) ||
-      (categoryFilter === 'Fintech' && (op.category.includes('Finance') || op.category.includes('Lending'))) ||
-      (categoryFilter === 'SaaS' && op.category.includes('SaaS'))
-    );
-  }, [categoryFilter, opportunities]);
+    return OPPORTUNITIES.filter(op => categoryFilter === 'All' || op.category.includes(categoryFilter) || (categoryFilter === 'Fintech' && (op.category.includes('Finance') || op.category.includes('Lending'))) || (categoryFilter === 'SaaS' && op.category.includes('SaaS')));
+  }, [categoryFilter]);
 
-  const selectedOp: Opportunity = opportunities.find(op => op.id === selectedId) ?? opportunities[0];
-  const topOp: Opportunity = opportunities[0];
+  const selectedOp = OPPORTUNITIES.find(op => op.id === selectedId) || OPPORTUNITIES[0];
+
+  // Get top 4 opportunities ranked by score for the shortlist
+  const topOpportunities = useMemo(() => {
+    return [...OPPORTUNITIES].sort((a, b) => b.score - a.score).slice(0, 4);
+  }, []);
+
+  const getCompetitionColor = (x: number) => {
+    if (x < 30) return 'text-teal-400 bg-teal-500/10 border-teal-500/20';
+    if (x < 50) return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+    if (x < 70) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+    return 'text-red-400 bg-red-500/10 border-red-500/20';
+  };
+
+  const getCompetitionLabel = (x: number) => {
+    if (x < 30) return 'Low';
+    if (x < 50) return 'Low/Med';
+    if (x < 70) return 'Medium';
+    return 'High';
+  };
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanCat || !scanTarget) return;
     setIsScanning(true);
-    setScanError('');
+    
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
@@ -98,14 +116,8 @@ export default function DashboardTerminal() {
         })
       });
       const data = await res.json();
-      if (data.id) {
-        router.push(`/scan?id=${data.id}`);
-      } else {
-        setScanError(data.error ?? 'Failed to start scan.');
-        setIsScanning(false);
-      }
+      if (data.id) router.push(`/scan?id=${data.id}`);
     } catch (err) {
-      setScanError('Could not reach server. Is the dev server running?');
       console.error(err);
       setIsScanning(false);
     }
@@ -114,14 +126,14 @@ export default function DashboardTerminal() {
   return (
     <div className="bg-[#0a0a0b] min-h-[calc(100vh-4rem)] text-gray-100 font-sans pb-16 selection:bg-brand-500/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-
-        {/* SECTION 1: TOP HERO ROW */}
+        
+        {/* SECTION 1: TOP RANKED OPPORTUNITY + SHORTLIST ROW */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* Top Opportunity Hero (7 cols) */}
-          <div className="lg:col-span-7 bg-[#111113] border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl flex flex-col justify-between group">
+          
+          {/* Left: Selected Opportunity Detail (8 cols) */}
+          <div className="lg:col-span-8 bg-[#111113] border border-white/10 rounded-2xl p-8 relative overflow-hidden shadow-2xl flex flex-col justify-between group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 blur-[80px] pointer-events-none group-hover:bg-brand-500/15 transition-all duration-700" />
-
+            
             <div>
               <div className="flex justify-between items-start mb-6">
                 <h2 className="text-xs font-mono font-bold tracking-widest text-brand-400 uppercase flex items-center gap-2">
@@ -129,45 +141,49 @@ export default function DashboardTerminal() {
                   Top Opportunity This Week
                 </h2>
                 <div className="text-right">
-                  <span className="block text-[10px] text-gray-500 font-mono tracking-widest uppercase">Score</span>
-                  <span className="text-4xl font-display font-bold text-white tracking-tighter shadow-brand-500/20 drop-shadow-lg">{topOp.score}</span>
+                  <span className="block text-[10px] text-gray-500 font-mono tracking-widest uppercase">Opportunity Score</span>
+                  <span className="text-4xl font-display font-bold text-white tracking-tighter shadow-brand-500/20 drop-shadow-lg">{selectedOp.score}</span>
                 </div>
               </div>
 
               <div className="mb-6">
-                <h3 className="text-3xl font-display font-semibold text-white mb-2 leading-tight">{topOp.category}</h3>
+                <h3 className="text-3xl font-display font-semibold text-white mb-2 leading-tight">{selectedOp.category}</h3>
                 <div className="flex items-center gap-3 text-sm font-medium text-gray-400">
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    {topOp.market}
-                  </span>
+                  <span className="flex items-center gap-1.5"><svg className="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {selectedOp.market}</span>
                   <span>•</span>
-                  <span className="text-brand-300">Confidence: {topOp.confidence}%</span>
+                  <span className="text-brand-300">Confidence: {selectedOp.confidence}%</span>
                   <span>•</span>
-                  <span className="text-yellow-400">Competition: {topOp.competitionDensity < 40 ? 'Low' : topOp.competitionDensity < 70 ? 'Medium' : 'High'}</span>
+                  <span className={getCompetitionLabel(selectedOp.x) === 'Low' ? 'text-teal-400' : getCompetitionLabel(selectedOp.x) === 'Low/Med' ? 'text-blue-400' : 'text-yellow-400'}>Competition: {getCompetitionLabel(selectedOp.x)}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-8 mb-6">
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono mb-1">Momentum (7D)</div>
-                  <div className={`text-lg font-mono font-medium ${topOp.trend.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>
-                    {topOp.trend}
-                  </div>
+                  <div className="text-lg font-mono font-medium text-green-400">{selectedOp.trend}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono mb-1">Analog Markets</div>
-                  <div className="text-lg font-mono font-medium text-white">{topOp.analogs.join(', ')}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono mb-1">Time Window</div>
+                  <div className="text-lg font-mono font-medium text-white">6–12 Months</div>
                 </div>
               </div>
 
               <div className="bg-black/30 border border-white/5 rounded-xl p-4 mb-8">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono mb-2">Why Now</div>
-                <p className="text-sm text-gray-300 leading-relaxed font-light">&ldquo;{topOp.whyNow}&rdquo;</p>
+                <p className="text-sm text-gray-300 leading-relaxed font-light">
+                  {selectedOp.whyNow}
+                </p>
               </div>
             </div>
 
             <div>
+              <div className="flex gap-6 mb-6">
+                <div className="flex items-center gap-2"><span className="text-white font-mono font-bold">12</span> <span className="text-xs text-gray-500 font-medium tracking-wide">Funding signals</span></div>
+                <div className="flex items-center gap-2"><span className="text-white font-mono font-bold">18</span> <span className="text-xs text-gray-500 font-medium tracking-wide">Hiring signals</span></div>
+                <div className="flex items-center gap-2"><span className="text-white font-mono font-bold">9</span> <span className="text-xs text-gray-500 font-medium tracking-wide">Launch signals</span></div>
+                <div className="flex items-center gap-2"><span className="text-blue-400 font-mono font-bold">MODERATE</span> <span className="text-xs text-gray-500 font-medium tracking-wide">Regulatory tailwinds</span></div>
+              </div>
+              
               <div className="flex flex-wrap gap-3">
                 <button className="bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold py-2.5 px-6 rounded-lg transition-colors shadow-lg shadow-brand-500/20">
                   View Full Analysis
@@ -182,55 +198,48 @@ export default function DashboardTerminal() {
             </div>
           </div>
 
-          {/* Guided Scan Module (5 cols) */}
-          <div className="lg:col-span-5 bg-[#111113] border border-white/10 rounded-2xl p-8 relative flex flex-col">
-            <h2 className="text-lg font-display font-semibold text-white mb-1">Run New Opportunity Scan</h2>
-            <p className="text-xs text-gray-500 mb-6">Arbitrage market patterns across global ecosystems.</p>
-
-            <form onSubmit={handleScan} className="flex-1 flex flex-col gap-4">
-              <div>
-                <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Category / Business Model</label>
-                <input type="text" value={scanCat} onChange={e => setScanCat(e.target.value)} required placeholder="e.g. Creator Economy Tools" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Source Market (Optional)</label>
-                <input type="text" value={scanSource} onChange={e => setScanSource(e.target.value)} placeholder="e.g. US, India" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Target Region / Market</label>
-                <input type="text" value={scanTarget} onChange={e => setScanTarget(e.target.value)} required placeholder="e.g. Southeast Asia" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Priority Engine</label>
-                <select value={scanPriority} onChange={e => setScanPriority(e.target.value)} className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono appearance-none">
-                  <option>Whitespace</option>
-                  <option>Momentum</option>
-                  <option>Ease of Entry</option>
-                  <option>Competition</option>
-                </select>
-              </div>
-
-              <div className="mt-auto pt-6">
-                {scanError && (
-                  <p className="text-xs text-red-400 mb-3">{scanError}</p>
-                )}
-                <button type="submit" disabled={isScanning || !scanCat || !scanTarget} className="w-full bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-sm font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                  {isScanning ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'Find Best Markets'}
+          {/* Right: Top 4 Ranked Opportunities (4 cols) */}
+          <div className="lg:col-span-4 bg-[#111113] border border-white/10 rounded-2xl p-6 relative flex flex-col overflow-hidden">
+            <h2 className="text-lg font-display font-semibold text-white mb-1">Top Opportunities Right Now</h2>
+            <p className="text-xs text-gray-500 mb-6">Ranked by composite opportunity score</p>
+            
+            <div className="flex flex-col gap-3 flex-1">
+              {topOpportunities.map((op, idx) => (
+                <button
+                  key={op.id}
+                  onClick={() => setSelectedId(op.id)}
+                  className={`p-4 rounded-xl border transition-all text-left ${
+                    selectedId === op.id
+                      ? 'bg-brand-500/15 border-brand-400/50 shadow-lg shadow-brand-500/20'
+                      : 'bg-[#0a0a0b] border-white/5 hover:bg-[#161618] hover:border-white/10'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2.5">
+                    <div className="flex items-start gap-3 flex-1">
+                      <span className={`text-sm font-mono font-bold ${selectedId === op.id ? 'text-brand-300' : 'text-gray-500'}`}>#{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white text-sm leading-tight">{op.category.split(' ').slice(0, 2).join(' ')}</div>
+                        <div className="text-[11px] text-gray-400 font-mono uppercase tracking-wide">{op.market}</div>
+                      </div>
+                    </div>
+                    <span className={`font-mono font-bold text-lg whitespace-nowrap ml-2 ${selectedId === op.id ? 'text-brand-300' : 'text-white'}`}>{op.score}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-mono text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">{op.trend}</span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${getCompetitionColor(op.x)}`}>{getCompetitionLabel(op.x)} Competition</span>
+                  </div>
                 </button>
-              </div>
-            </form>
+              ))}
+            </div>
 
-            <div className="mt-6 pt-5 border-t border-white/5">
-              <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-3">Suggested Vectors</div>
-              <div className="flex flex-wrap gap-2">
-                {['AI Sales Agents', 'Embedded Finance', 'Vertical SaaS for Logistics', 'Creator Economy Tools'].map(chip => (
-                  <button key={chip} onClick={() => setScanCat(chip)} className="text-xs px-3 py-1.5 bg-[#161618] border border-white/10 text-gray-400 rounded-lg hover:bg-white/10 hover:text-white transition-colors">
-                    {chip}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-6 pt-4 border-t border-white/5">
+              <Link href="/markets" className="text-xs text-brand-400 hover:text-brand-300 font-mono font-bold uppercase tracking-widest transition-colors flex items-center gap-2">
+                View full matrix
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
             </div>
           </div>
+
         </section>
 
         {/* SECTION 2: OPPORTUNITY MATRIX ROW */}
@@ -264,137 +273,176 @@ export default function DashboardTerminal() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* The Matrix Plot - Full Width (12 cols) */}
+            <div className="lg:col-span-12 flex flex-col min-h-[500px] h-[65vh] max-h-[700px] relative">
+              <div className="absolute inset-0 bg-[#0d0d0f] border border-white/10 rounded-2xl overflow-hidden shadow-inner flex">
+                {/* Quadrant Backgrounds - More Subtle */}
+                <div className="absolute top-0 left-0 w-1/2 h-1/2 bg-teal-500/3 mix-blend-screen" />
+                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-amber-500/3 mix-blend-screen" />
+                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gray-500/2 mix-blend-screen" />
+                <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-rose-500/3 mix-blend-screen" />
 
-            {/* The Matrix Plot (8 cols) */}
-            <div className="lg:col-span-8 flex flex-col min-h-[500px] h-[65vh] max-h-[700px] relative">
-              <div className="absolute inset-0 bg-[#0d0d0f] border border-white/10 rounded-2xl overflow-hidden shadow-inner">
-                <div className="absolute top-1/2 left-0 w-full border-t border-dashed border-white/5" />
-                <div className="absolute top-0 left-1/2 h-full border-l border-dashed border-white/5" />
-                <div className="absolute top-6 left-6 text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Emerging Whitespace</div>
-                <div className="absolute top-6 right-6 text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest text-right">Hot but Crowded</div>
-                <div className="absolute bottom-6 left-6 text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest">Low Priority</div>
-                <div className="absolute bottom-6 right-6 text-[10px] font-mono font-bold text-gray-600 uppercase tracking-widest text-right">Mature / Saturated</div>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono tracking-widest uppercase flex items-center gap-2">
-                  <span>Low</span><span className="w-16 h-px bg-gray-700"></span><span>Competition Density</span><span className="w-16 h-px bg-gray-700"></span><span>High</span>
+                {/* Quadrant Lines - Very Subtle */}
+                <div className="absolute top-1/2 left-0 w-full border-t border-dashed border-white/3 z-0" />
+                <div className="absolute top-0 left-1/2 h-full border-l border-dashed border-white/3 z-0" />
+                
+                {/* Quadrant Labels - Reduced Opacity */}
+                <div className="absolute top-6 left-6 text-[9px] font-mono font-bold text-teal-600/40 uppercase tracking-widest z-0">Emerging Whitespace</div>
+                <div className="absolute top-6 right-6 text-[9px] font-mono font-bold text-amber-600/40 uppercase tracking-widest text-right z-0">Hot but Crowded</div>
+                <div className="absolute bottom-10 left-6 text-[9px] font-mono font-bold text-gray-500/40 uppercase tracking-widest z-0">Low Priority</div>
+                <div className="absolute bottom-10 right-6 text-[9px] font-mono font-bold text-rose-600/40 uppercase tracking-widest text-right z-0">Mature / Saturated</div>
+                
+                {/* Axes */}
+                <div className="absolute bottom-2 left-6 right-6 flex items-center justify-between text-[9px] text-gray-500 font-mono tracking-widest uppercase z-0 border-t border-gray-800/50 pt-1">
+                  <span>Low</span>
+                  <span className="font-bold text-gray-400">Competition Density</span>
+                  <span>High</span>
                 </div>
-                <div className="absolute top-1/2 left-2 -translate-y-1/2 -rotate-90 text-[10px] text-gray-500 font-mono tracking-widest uppercase flex items-center gap-2 origin-center">
-                  <span>Low</span><span className="w-16 h-px bg-gray-700"></span><span>Market Momentum</span><span className="w-16 h-px bg-gray-700"></span><span>High</span>
+                <div className="absolute top-6 bottom-10 left-2 w-4 flex flex-col items-center justify-between text-[9px] text-gray-500 font-mono tracking-widest uppercase z-0">
+                  <span className="-rotate-90 origin-center translate-y-2">High</span>
+                  <span className="-rotate-90 origin-center font-bold text-gray-400 whitespace-nowrap">Market Momentum</span>
+                  <span className="-rotate-90 origin-center -translate-y-2">Low</span>
                 </div>
 
-                {liveUpdating && (
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/40 border border-white/5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-                    <span className="text-[9px] text-gray-500 font-mono">fetching live data</span>
-                  </div>
-                )}
+                {/* Legend - Reduced Prominence */}
+                <div className="absolute bottom-12 right-6 bg-black/20 border border-white/5 p-2 rounded-lg flex gap-3 text-[8px] text-gray-500 font-mono z-10 backdrop-blur-sm">
+                   <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-gray-600" /> Size = Demand</div>
+                   <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-white opacity-40" /> Fill = Score</div>
+                   <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-white/40" /> Ring = Confidence</div>
+                </div>
 
-                <div className="absolute inset-x-12 inset-y-16">
-                  {filteredData.map(op => {
-                    const size = 20 + (op.demand / 100) * 40;
-                    let colorClass = 'border-gray-500 bg-gray-500/20 text-gray-400';
-                    let glowClass = '';
-                    if (op.score >= 90) { colorClass = 'border-brand-400 bg-brand-500/30 text-brand-100'; glowClass = 'shadow-[0_0_30px_rgba(20,184,166,0.3)]'; }
-                    else if (op.score >= 80) { colorClass = 'border-blue-400 bg-blue-500/30 text-blue-100'; glowClass = 'shadow-[0_0_20px_rgba(59,130,246,0.2)]'; }
-                    else if (op.score >= 60) { colorClass = 'border-yellow-400 bg-yellow-500/20 text-yellow-100'; }
-                    else { colorClass = 'border-red-400 bg-red-500/20 text-red-100'; }
+                {/* Data Points Playfield */}
+                <div className="absolute inset-x-12 inset-y-16 lg:inset-x-16 lg:inset-y-16 z-20">
+                  {useMemo(() => {
+                    // Get top 3 opportunities by score for secondary labels
+                    const topOps = [...filteredData].sort((a, b) => b.score - a.score).slice(0, 3).map(op => op.id);
+                    return filteredData.map(op => {
+                      const size = Math.max(24, (op.demand / 100) * 60);
+                      
+                      // Opportunity Score = Fill intensity/color
+                      let fillClass = 'bg-gray-500/20';
+                      let textClass = 'text-gray-400';
+                      let glowClass = '';
+                      
+                      if (op.score >= 90) { fillClass = 'bg-brand-500/80'; textClass = 'text-white'; glowClass = 'shadow-[0_0_20px_rgba(20,184,166,0.6)]'; }
+                      else if (op.score >= 80) { fillClass = 'bg-brand-500/50'; textClass = 'text-white'; glowClass = 'shadow-[0_0_15px_rgba(20,184,166,0.3)]'; }
+                      else if (op.score >= 70) { fillClass = 'bg-blue-500/40'; textClass = 'text-white'; glowClass = 'shadow-[0_0_10px_rgba(59,130,246,0.2)]'; }
+                      else if (op.score >= 60) { fillClass = 'bg-yellow-500/30'; textClass = 'text-yellow-100'; }
+                      else { fillClass = 'bg-red-500/30'; textClass = 'text-red-100'; }
 
-                    const isSelected = selectedId === op.id;
-                    const isHovered = hoveredNode === op.id;
-                    const dimOthers = (selectedId || hoveredNode) && !isSelected && !isHovered;
+                      // Confidence = Ring stroke
+                      let borderClass = 'border-white/10 border';
+                      if (op.confidence >= 80) borderClass = 'border-white/50 border-2';
+                      else if (op.confidence >= 70) borderClass = 'border-white/30 border-2';
 
-                    return (
-                      <div
-                        key={op.id}
-                        className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
-                        style={{ left: `${op.competitionDensity}%`, bottom: `${op.momentum}%`, zIndex: isSelected ? 50 : (isHovered ? 40 : 10), transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-                        onMouseEnter={() => setHoveredNode(op.id)}
-                        onMouseLeave={() => setHoveredNode(null)}
-                        onClick={() => setSelectedId(op.id)}
-                      >
+                      const isSelected = selectedId === op.id;
+                      const isHovered = hoveredNode === op.id;
+                      const isTopOp = topOps.includes(op.id) && !isSelected;
+                      const dimOthers = selectedId && !isSelected && !isHovered && !isTopOp;
+
+                      return (
                         <div
-                          className={`rounded-full border backdrop-blur-md flex items-center justify-center transition-all ${colorClass} ${glowClass} ${dimOthers ? 'opacity-20 scale-90 blur-[2px] saturate-0' : 'opacity-100'} ${isSelected ? 'ring-4 ring-white/10 scale-110' : ''}`}
-                          style={{ width: size, height: size }}
+                          key={op.id}
+                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer transition-all duration-500 ${dimOthers ? 'opacity-35 saturate-40' : (isTopOp && !isHovered ? 'opacity-65' : 'opacity-100')} ${isSelected ? 'z-50' : (isHovered ? 'z-40' : 'z-30')}`}
+                          style={{ 
+                            left: `${op.x}%`, 
+                            bottom: `${op.y}%`
+                          }}
+                          onMouseEnter={() => setHoveredNode(op.id)}
+                          onMouseLeave={() => setHoveredNode(null)}
+                          onClick={() => setSelectedId(op.id)}
                         >
-                          <span className="text-[10px] font-bold tracking-tight opacity-90 drop-shadow-md">{op.score}</span>
-                        </div>
-                        <div className={`absolute left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap text-[10px] font-medium transition-all ${dimOthers ? 'opacity-0' : 'opacity-100 text-gray-300'}`}>
-                          {viewBy === 'Category' ? op.category : op.market}
-                        </div>
-                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-[#1a1a1c] border border-white/10 rounded-xl p-4 shadow-2xl transition-all pointer-events-none ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <div className="text-xs font-bold text-white mb-0.5">{op.category}</div>
-                              <div className="text-[10px] text-gray-400 font-mono uppercase">{op.market}</div>
-                            </div>
-                            <div className={`text-xs font-black font-mono ${op.score >= 80 ? 'text-brand-400' : 'text-yellow-400'}`}>{op.score}</div>
+                          <div 
+                            className={`rounded-full flex items-center justify-center transition-all duration-300 ${fillClass} ${borderClass} ${isSelected ? `ring-2 ring-brand-300 scale-140 ${glowClass} !bg-brand-400 shadow-2xl` : (isHovered ? 'scale-125 ring-1 ring-white/30' : '')} hover:scale-110`}
+                            style={{ width: size, height: size }}
+                          >
+                            <span className={`text-[10px] font-bold tracking-tight drop-shadow-md ${textClass} ${isSelected ? '!text-white' : ''} ${(!isSelected && size < 30) ? 'opacity-0 group-hover:opacity-100' : ''}`}>
+                              {op.score}
+                            </span>
                           </div>
-                          <p className="text-[10px] text-gray-300 leading-relaxed mb-3 line-clamp-2">{op.whyNow}</p>
-                          <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
-                            <div>
-                              <span className="block text-[8px] text-gray-500 uppercase font-mono tracking-widest">Momentum</span>
-                              <span className={`text-[10px] font-mono ${op.trend.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>{op.trend} 7D</span>
+
+                          {/* Smart Label Logic */}
+                          {isSelected && (
+                            <div className="absolute left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center whitespace-nowrap z-50 pointer-events-none">
+                              <span className="text-[10px] font-bold text-white drop-shadow-lg">{op.category}</span>
+                              <span className="text-[8px] font-mono tracking-widest text-gray-200 drop-shadow-lg">{op.market}</span>
+                              <span className="text-[9px] font-mono font-bold text-brand-300 drop-shadow-lg mt-1">{op.score} Score</span>
                             </div>
-                            <div>
-                              <span className="block text-[8px] text-gray-500 uppercase font-mono tracking-widest">Competition</span>
-                              <span className="text-[10px] font-mono text-gray-300">{op.competitionDensity}%</span>
+                          )}
+                          {isTopOp && !isSelected && (
+                            <div className="absolute left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center whitespace-nowrap z-30 opacity-60 pointer-events-none">
+                              <span className="text-[9px] font-semibold text-gray-300 drop-shadow-md">{op.category.split(' ').slice(0, 2).join(' ')}</span>
+                              <span className="text-[8px] font-mono tracking-widest text-gray-400 drop-shadow-md">{op.market}</span>
+                            </div>
+                          )}
+
+                          {/* Hover Tooltip */}
+                          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-[#1a1a1c] border border-white/10 rounded-lg p-3 shadow-2xl transition-all pointer-events-none z-50 ${isHovered && !isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-white truncate w-32">{op.category}</span>
+                                <span className={`text-xs font-black font-mono ${op.score >= 80 ? 'text-brand-400' : 'text-yellow-400'}`}>{op.score}</span>
+                              </div>
+                              <span className="text-[10px] text-gray-400 font-mono uppercase truncate">{op.market}</span>
+                              <div className="text-[10px] text-gray-300 line-clamp-2 mt-1">{op.whyNow}</div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  }, [filteredData, selectedId, hoveredNode])}
                 </div>
               </div>
             </div>
 
-            {/* Right Side Matrix Insight Panel (4 cols) */}
-            <div className="lg:col-span-4 flex flex-col h-full">
-              <div className="bg-[#0a0a0b] border border-white/5 rounded-2xl flex flex-col flex-1 overflow-hidden shadow-inner relative group h-full">
-                <div className={`absolute top-0 right-0 w-48 h-48 blur-[80px] opacity-20 transition-all ${selectedOp.score >= 80 ? 'bg-brand-500' : 'bg-yellow-500'}`} />
-                <div className="flex-1 flex flex-col p-6 z-10 overflow-y-auto">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] tracking-widest text-gray-300 font-mono uppercase">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Matrix Selection
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-[10px] font-mono text-gray-500 uppercase">Score</span>
-                      <span className={`text-3xl font-display font-semibold tracking-tighter ${selectedOp.score >= 80 ? 'text-brand-400' : 'text-white'}`}>{selectedOp.score}</span>
-                    </div>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white leading-tight mb-1">{selectedOp.category}</h2>
-                  <h3 className="text-lg text-gray-400 font-medium font-display mb-8">— {selectedOp.market}</h3>
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Confidence</div>
-                      <div className="text-lg font-mono text-white">{selectedOp.confidence}%</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Competition</div>
-                      <div className="text-lg font-mono text-white">{selectedOp.competitionDensity}% Density</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Momentum Trend</div>
-                      <div className={`text-lg font-mono ${selectedOp.trend.startsWith('+') ? 'text-green-400' : 'text-red-400'}`}>{selectedOp.trend}</div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Analog Markets</div>
-                      <div className="text-sm font-medium text-gray-300 flex flex-wrap gap-1 mt-1">
-                        {selectedOp.analogs.map(a => <span key={a} className="bg-white/5 px-2 py-0.5 rounded border border-white/5">{a}</span>)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mb-8">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-3">Why Now</div>
-                    <p className="text-sm text-gray-300 leading-relaxed bg-[#161618] p-4 rounded-xl border border-white/5">{selectedOp.whyNow}</p>
-                  </div>
-                  <div className="mt-auto space-y-3 pt-6">
-                    <button className="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3.5 rounded-xl transition-colors shadow-lg shadow-brand-500/20 text-sm">View Full Analysis</button>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button className="bg-[#222] hover:bg-[#333] border border-white/5 text-xs font-medium text-white py-3 rounded-xl transition-colors">Save Opportunity</button>
-                      <button className="bg-[#222] hover:bg-[#333] border border-white/5 text-xs font-medium text-white py-3 rounded-xl transition-colors">Compare Markets</button>
-                    </div>
-                  </div>
+          </div>
+        </section>
+
+        {/* SECTION 2B: RUN NEW SCAN */}
+        <section className="bg-[#111113] border border-white/10 rounded-2xl p-8 relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <h2 className="text-2xl font-display font-semibold text-white mb-1 tracking-tight">Run New Opportunity Scan</h2>
+              <p className="text-gray-400 text-sm mb-8">Arbitrage market patterns across global ecosystems to find hidden opportunities.</p>
+
+              <form onSubmit={handleScan} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Category / Business Model</label>
+                  <input type="text" value={scanCat} onChange={e => setScanCat(e.target.value)} required placeholder="e.g. Creator Economy Tools" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
                 </div>
+                <div>
+                  <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Source Market (Optional)</label>
+                  <input type="text" value={scanSource} onChange={e => setScanSource(e.target.value)} placeholder="e.g. US, India" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Target Region / Market</label>
+                  <input type="text" value={scanTarget} onChange={e => setScanTarget(e.target.value)} required placeholder="e.g. Southeast Asia" className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono tracking-widest text-gray-500 uppercase mb-1.5">Priority Engine</label>
+                  <select value={scanPriority} onChange={e => setScanPriority(e.target.value)} className="w-full bg-[#0a0a0b] border border-white/10 rounded-lg py-2.5 px-4 text-sm text-white focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/50 transition-all font-mono appearance-none">
+                    <option>Whitespace</option>
+                    <option>Momentum</option>
+                    <option>Ease of Entry</option>
+                    <option>Competition</option>
+                  </select>
+                </div>
+              </form>
+
+              <button onClick={(e) => { e.preventDefault(); handleScan(e as any); }} disabled={isScanning || !scanCat || !scanTarget} className="bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-sm font-bold py-3.5 px-8 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 w-full md:w-auto">
+                {isScanning ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : 'Find Best Markets'}
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Suggested Vectors</h3>
+              <div className="flex flex-col gap-2">
+                {['AI Sales Agents', 'Embedded Finance', 'Vertical SaaS for Logistics', 'Creator Economy Tools'].map(chip => (
+                  <button key={chip} onClick={() => setScanCat(chip)} className="text-xs px-4 py-2.5 bg-[#0a0a0b] border border-white/10 text-gray-400 rounded-lg hover:bg-white/10 hover:text-white transition-colors text-left">
+                    {chip}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -402,66 +450,106 @@ export default function DashboardTerminal() {
 
         {/* SECTION 3: SUPPORTING INTELLIGENCE ROW */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          {/* Fastest-Rising Categories */}
+          
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
             <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Fastest-Rising Categories</h3>
             <div className="flex flex-col gap-4">
-              {dashData.risingCategories.map((item, i) => (
-                <div key={i} className="flex justify-between items-center group">
-                  <div>
-                    <div className={`text-sm font-medium ${item.declining ? 'text-gray-400 line-through decoration-red-500/50' : 'text-white'}`}>{item.category}</div>
-                    <div className="text-[10px] font-mono text-gray-500 tracking-wider uppercase">{item.market}</div>
-                  </div>
-                  <div className={`text-sm font-mono font-bold group-hover:scale-110 transition-transform ${item.declining ? 'text-red-400' : 'text-green-400'}`}>{item.trend}</div>
+              <div className="flex justify-between items-center group">
+                <div>
+                  <div className="text-sm font-medium text-white">Embedded Finance</div>
+                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">VIETNAM</div>
                 </div>
-              ))}
+                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+18.2%</div>
+              </div>
+              <div className="flex justify-between items-center group">
+                <div>
+                  <div className="text-sm font-medium text-white">B2B E-commerce</div>
+                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">INDONESIA</div>
+                </div>
+                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+12.4%</div>
+              </div>
+              <div className="flex justify-between items-center group">
+                <div>
+                  <div className="text-sm font-medium text-white">HealthTech</div>
+                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">VIETNAM</div>
+                </div>
+                <div className="text-sm font-mono font-bold text-green-400 group-hover:scale-110 transition-transform">+8.9%</div>
+              </div>
+              <div className="flex justify-between items-center group">
+                <div>
+                  <div className="text-sm font-medium text-gray-400 line-through decoration-red-500/50">EdTech</div>
+                  <div className="text-[10px] font-mono text-gray-500 tracking-wider">INDONESIA</div>
+                </div>
+                <div className="text-sm font-mono font-bold text-red-400 group-hover:scale-110 transition-transform">-12.6%</div>
+              </div>
             </div>
           </div>
 
-          {/* Pattern Migration Signals */}
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
             <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Pattern Migration Signals</h3>
             <div className="flex flex-col gap-5">
-              {dashData.migrationSignals.map((sig, i) => (
-                <div key={i} className="flex flex-col gap-1.5">
-                  <div className="text-sm font-medium text-white">{sig.category}</div>
-                  <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
-                    {sig.path.map((market, j) => (
-                      <React.Fragment key={j}>
-                        <span className={j === sig.path.length - 1 ? 'text-white font-bold' : ''}>{market}</span>
-                        {j < sig.path.length - 1 && <span className="text-brand-500">→</span>}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                  <div className="text-[10px] text-gray-500 italic">{sig.confidence} — {sig.window}</div>
+              <div className="flex flex-col gap-1.5">
+                <div className="text-sm font-medium text-white">AI SDR Tools</div>
+                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
+                  <span>US</span><span className="text-brand-500">→</span><span>IN</span><span className="text-brand-500">→</span><span className="text-white font-bold">ID</span>
                 </div>
-              ))}
+                <div className="text-[10px] text-gray-500 italic">High confidence — 3-6mo window</div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="text-sm font-medium text-white">SME Embedded Finance</div>
+                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
+                  <span>BR</span><span className="text-brand-500">→</span><span className="text-white font-bold">VN</span>
+                </div>
+                <div className="text-[10px] text-gray-500 italic">Moderate confidence — inflecting now</div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="text-sm font-medium text-white">Vertical Clinic SaaS</div>
+                <div className="flex items-center text-[11px] font-mono text-gray-400 gap-2">
+                  <span>IN</span><span className="text-brand-500">→</span><span className="text-white font-bold">PH</span>
+                </div>
+                <div className="text-[10px] text-gray-500 italic">High confidence — lagging 18mo behind</div>
+              </div>
             </div>
           </div>
 
-          {/* Recent Funding Signals */}
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6 flex flex-col">
             <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono">Recent Funding Signals</h3>
             <div className="flex flex-col gap-5">
-              {dashData.fundingSignals.map((sig, i) => (
-                <div key={i} className="border-l-2 border-brand-500/50 pl-3">
-                  <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-sm font-bold text-white">{sig.company}</span>
-                    <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">{sig.round}</span>
-                  </div>
-                  <div className="text-[11px] text-gray-400 flex items-center gap-2">
-                    <span className="uppercase font-mono">{sig.market}</span> • <span>{sig.sector}</span>
-                  </div>
+              <div className="border-l-2 border-brand-500/50 pl-3">
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-bold text-white">DataForge</span>
+                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$12M Series A</span>
                 </div>
-              ))}
+                <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                  <span className="uppercase font-mono">SG</span> • <span>Data Infrastructure</span>
+                </div>
+              </div>
+              <div className="border-l-2 border-brand-500/50 pl-3">
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-bold text-white">KrediCepat</span>
+                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$5M Seed</span>
+                </div>
+                <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                  <span className="uppercase font-mono">ID</span> • <span>Consumer Lending</span>
+                </div>
+              </div>
+              <div className="border-l-2 border-brand-500/50 pl-3">
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-bold text-white">MediSync</span>
+                  <span className="text-[10px] font-mono font-medium text-brand-300 bg-brand-500/10 border border-brand-500/20 px-1.5 py-0.5 rounded">$8M Pre-Series A</span>
+                </div>
+                <div className="text-[11px] text-gray-400 flex items-center gap-2">
+                  <span className="uppercase font-mono">VN</span> • <span>HealthTech</span>
+                </div>
+              </div>
             </div>
           </div>
+
         </section>
 
         {/* SECTION 4: USER WORKSPACE ROW */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+          
           <div className="bg-[#111113] border border-white/10 rounded-2xl p-6">
             <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider font-mono flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
